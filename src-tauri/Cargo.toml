@@ -1,7 +1,7 @@
 [package]
 name = "myaitoimg"
-version = "0.1.0"
-description = "myaitoimg node canvas desktop app"
+version = "0.1.1"
+description = "myaitoimg 节点式 AI 图片生成工作台"
 authors = ["小沨 <xinai.de>"]
 edition = "2021"
 

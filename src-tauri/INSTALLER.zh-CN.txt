@@ -1,0 +1,16 @@
+myaitoimg v0.1.1
+
+作者：小沨，xinai.de
+官网：https://xinai.de
+
+软件介绍：
+myaitoimg 是一个基于 Rust、Tauri 和 Vue 3 的节点式 AI 图片生成工作台，用于在桌面端管理提示词、参考图、图片编辑和结果预览。
+
+主要功能：
+- OpenAI 图片接口：支持文生图、图片编辑、多图参考、蒙版、尺寸、质量、格式、透明背景和压缩参数。
+- Gemini 图片接口：支持文生图、图生图/局部编辑、多参考图、比例、1K/2K/4K、搜索接地和思考模式。
+- 中转 API：支持自定义模型、Endpoint、Edit Endpoint、鉴权 Header 和鉴权前缀。
+- 本地工作流：节点画布式界面，支持提示词、图片处理和结果预览。
+
+版权信息：
+Copyright (c) 2026 小沨, xinai.de. All rights reserved.

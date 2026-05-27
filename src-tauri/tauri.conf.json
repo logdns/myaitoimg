@@ -1,7 +1,7 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "myaitoimg",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "identifier": "de.xinai.myaitoimg",
   "build": {
     "beforeDevCommand": "npm run dev",
@@ -27,6 +27,10 @@
   "bundle": {
     "active": true,
     "targets": "all",
+    "publisher": "小沨, xinai.de",
+    "homepage": "https://xinai.de",
+    "copyright": "Copyright © 2026 小沨, xinai.de. All rights reserved.",
+    "licenseFile": "INSTALLER.zh-CN.txt",
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",
@@ -35,7 +39,20 @@
       "icons/icon.ico"
     ],
     "category": "GraphicsAndDesign",
-    "shortDescription": "myaitoimg node canvas image generation workbench",
-    "longDescription": "myaitoimg by 小沨, xinai.de. A Tauri and Vue desktop workbench for OpenAI and Gemini image generation."
+    "shortDescription": "myaitoimg 是小沨（xinai.de）制作的节点式 AI 图片生成工作台。",
+    "longDescription": "myaitoimg 由小沨（xinai.de）制作。它是一个面向桌面端的节点式 AI 图片生成工作台，支持 OpenAI、Gemini 和中转 API，可进行文生图、图片编辑、参考图、蒙版、尺寸、质量、格式、透明背景、压缩参数等工作流配置。",
+    "windows": {
+      "wix": {
+        "language": "zh-CN"
+      },
+      "nsis": {
+        "languages": [
+          "SimpChinese",
+          "English"
+        ],
+        "displayLanguageSelector": true,
+        "startMenuFolder": "myaitoimg"
+      }
+    }
   }
 }
