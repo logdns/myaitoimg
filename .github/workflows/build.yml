@@ -16,6 +16,9 @@ on:
 permissions:
   contents: write
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
   build:
     name: Build ${{ matrix.name }} client
@@ -31,7 +34,7 @@ jobs:
               src-tauri/target/release/bundle/macos/*.app
               src-tauri/target/release/bundle/macos/*.app.tar.gz
           - name: Windows
-            platform: windows-latest
+            platform: windows-2022
             artifact: myaitoimg-windows
             bundle-path: |
               src-tauri/target/release/bundle/msi/*.msi
@@ -78,7 +81,8 @@ jobs:
             libssl-dev \
             libayatana-appindicator3-dev \
             librsvg2-dev \
-            patchelf
+            patchelf \
+            rpm
 
       - name: Install frontend dependencies
         run: npm ci

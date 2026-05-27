@@ -27,6 +27,13 @@
   "bundle": {
     "active": true,
     "targets": "all",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ],
     "category": "GraphicsAndDesign",
     "shortDescription": "myaitoimg node canvas image generation workbench",
     "longDescription": "myaitoimg by 小沨, xinai.de. A Tauri and Vue desktop workbench for OpenAI and Gemini image generation."
