@@ -1,6 +1,6 @@
 [package]
 name = "myaitoimg"
-version = "0.1.1"
+version = "0.1.2"
 description = "myaitoimg 节点式 AI 图片生成工作台"
 authors = ["小沨 <xinai.de>"]
 edition = "2021"
@@ -19,4 +19,5 @@ reqwest = { version = "0.12", features = ["json", "multipart", "rustls-tls"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 tauri = { version = "2", features = [] }
+tauri-plugin-updater = "2.10.1"
 tokio = { version = "1", features = ["macros", "rt-multi-thread"] }

@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { computed, reactive, ref } from "vue";
 import { invoke } from "@tauri-apps/api/core";
+import { relaunch } from "@tauri-apps/plugin-process";
+import { check } from "@tauri-apps/plugin-updater";
 
 type ProviderKind = "openai" | "gemini" | "custom";
 type ProcessMode = "generate" | "edit" | "variation";
@@ -158,6 +160,7 @@ let progressTimer: number | undefined;
 const errorMessage = ref("");
 const showSettings = ref(false);
 const showLocalMenu = ref(false);
+const isCheckingUpdate = ref(false);
 const nodePositions = reactive<Record<NodeId, NodePosition>>(
   restored?.nodePositions ?? {
     prompt: { x: 82, y: 330 },
@@ -763,6 +766,42 @@ function showLocalHistory() {
   showLocalMenu.value = false;
 }
 
+async function checkForUpdates() {
+  showLocalMenu.value = false;
+  if (!isTauriRuntime.value) {
+    status.value = "浏览器预览模式不支持检查更新。";
+    return;
+  }
+
+  isCheckingUpdate.value = true;
+  progressLabel.value = "检查更新";
+  status.value = "正在检查新版本...";
+  errorMessage.value = "";
+
+  try {
+    const update = await check();
+    if (!update) {
+      status.value = "当前已是最新版本。";
+      progressLabel.value = "无更新";
+      return;
+    }
+
+    status.value = `发现新版本 ${update.version}，正在下载...`;
+    progressLabel.value = "下载更新";
+    await update.downloadAndInstall();
+    status.value = "更新已安装，正在重启应用...";
+    progressLabel.value = "重启应用";
+    await relaunch();
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    errorMessage.value = message;
+    status.value = "检查更新失败";
+    progressLabel.value = "更新失败";
+  } finally {
+    isCheckingUpdate.value = false;
+  }
+}
+
 async function handleReferenceUpload(event: Event) {
   const input = event.target as HTMLInputElement;
   if (!input.files?.length) return;
@@ -821,6 +860,9 @@ function readImageFile(file: File): Promise<ReferenceImage> {
           <button type="button" @click="returnCanvas">返回画布</button>
           <button type="button" @click="showLocalHistory">本地历史</button>
           <button type="button" @click="openSettings">系统设置</button>
+          <button type="button" :disabled="isCheckingUpdate" @click="checkForUpdates">
+            {{ isCheckingUpdate ? "检查中..." : "检查更新" }}
+          </button>
           <button type="button" @click="saveCanvasSnapshot">保存当前画布</button>
           <button type="button" @click="restoreLocalCanvas">恢复本机画布</button>
           <button type="button" @click="clearLocalSnapshot">清除本机快照</button>
