@@ -18,7 +18,7 @@ const cargoToml = readFileSync("src-tauri/Cargo.toml", "utf8");
 const cargoLock = readFileSync("src-tauri/Cargo.lock", "utf8");
 
 const cargoTomlVersion = cargoToml.match(/^version = "([^"]+)"/m)?.[1];
-const cargoLockVersion = cargoLock.match(/\[\[package\]\]\nname = "myaitoimg"\nversion = "([^"]+)"/)?.[1];
+const cargoLockVersion = cargoLock.match(/\[\[package\]\]\r?\nname = "myaitoimg"\r?\nversion = "([^"]+)"/)?.[1];
 
 const checks = [
   ["package-lock.json", packageLockVersion],
