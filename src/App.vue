@@ -73,7 +73,7 @@ interface NodePosition {
 
 const storageKey = "gptimage-workbench-state";
 const snapshotKey = "gptimage-workbench-snapshot";
-const stateVersion = 2;
+const stateVersion = 3;
 
 const defaultProviders: ProviderConfig[] = [
   {
@@ -129,8 +129,8 @@ const officialEndpointDefaults: Record<Exclude<ProviderKind, "custom">, Pick<Pro
 const restored = loadState();
 const providers = reactive<ProviderConfig[]>(normalizeProviders(restored?.providers));
 const selectedProviderId = ref(restored?.selectedProviderId ?? "openai");
-const workflowCreated = ref(restored?.stateVersion === stateVersion ? (restored?.workflowCreated ?? false) : false);
-const prompt = ref(workflowCreated.value ? (restored?.prompt ?? "") : "");
+const workflowCreated = ref(restored?.workflowCreated ?? false);
+const prompt = ref(restored?.prompt ?? "");
 const mode = ref<ProcessMode>(restored?.mode ?? "generate");
 const size = ref(restored?.size ?? "1024x1024");
 const aspectRatio = ref(restored?.aspectRatio ?? "1:1");
@@ -148,7 +148,7 @@ const project = ref(restored?.project ?? "");
 const tags = ref(restored?.tags ?? "");
 const referenceImages = ref<ReferenceImage[]>(restored?.referenceImages ?? []);
 const maskImage = ref<ReferenceImage | undefined>(restored?.maskImage);
-const zoom = ref(restored?.zoom ?? 1);
+const zoom = ref(restored?.stateVersion === stateVersion ? (restored?.zoom ?? 1) : 0.9);
 const images = ref<GeneratedImage[]>(restored?.images ?? []);
 const activeImageIndex = ref(restored?.activeImageIndex ?? 0);
 const isRunning = ref(false);
@@ -162,10 +162,10 @@ const showSettings = ref(false);
 const showLocalMenu = ref(false);
 const isCheckingUpdate = ref(false);
 const nodePositions = reactive<Record<NodeId, NodePosition>>(
-  restored?.nodePositions ?? {
-    prompt: { x: 82, y: 330 },
-    action: { x: 770, y: 118 },
-    result: { x: 1328, y: 250 },
+  restored?.stateVersion === stateVersion && restored?.nodePositions ? restored.nodePositions : {
+    prompt: { x: 56, y: 260 },
+    action: { x: 548, y: 92 },
+    result: { x: 1060, y: 220 },
   }
 );
 const dragging = ref<{
@@ -200,6 +200,20 @@ const isTauriRuntime = computed(() => Boolean((window as TauriWindow).__TAURI_IN
 const elapsedText = computed(() => {
   if (!elapsedMs.value) return "0.0s";
   return `${(elapsedMs.value / 1000).toFixed(1)}s`;
+});
+const nodeSizes: Record<NodeId, { width: number; height: number }> = {
+  prompt: { width: 405, height: 330 },
+  action: { width: 470, height: 860 },
+  result: { width: 600, height: 720 },
+};
+const canvasStyle = computed(() => {
+  const right = Math.max(...(Object.keys(nodePositions) as NodeId[]).map((id) => nodePositions[id].x + nodeSizes[id].width));
+  const bottom = Math.max(...(Object.keys(nodePositions) as NodeId[]).map((id) => nodePositions[id].y + nodeSizes[id].height));
+  return {
+    "--zoom": zoom.value,
+    width: `${Math.max(1760, right + 180)}px`,
+    height: `${Math.max(1080, bottom + 180)}px`,
+  };
 });
 
 function loadState() {
@@ -671,9 +685,9 @@ function resetCanvas() {
 }
 
 function resetNodePositions() {
-  nodePositions.prompt = { x: 82, y: 330 };
-  nodePositions.action = { x: 770, y: 118 };
-  nodePositions.result = { x: 1328, y: 250 };
+  nodePositions.prompt = { x: 56, y: 260 };
+  nodePositions.action = { x: 548, y: 92 };
+  nodePositions.result = { x: 1060, y: 220 };
 }
 
 function clearCanvas() {
@@ -707,6 +721,10 @@ function useAsReference() {
 }
 
 function duplicateTemplate(type: ProcessMode) {
+  if (!workflowCreated.value) {
+    resetNodePositions();
+    zoom.value = 0.9;
+  }
   workflowCreated.value = true;
   mode.value = type;
   if (type !== "generate" && activeImage.value && !referenceImages.value.length) {
@@ -981,7 +999,8 @@ function readImageFile(file: File): Promise<ReferenceImage> {
       <button class="danger" type="button" @click="clearCanvas">清空画布</button>
     </section>
 
-    <div class="canvas" :style="{ '--zoom': zoom }">
+    <div class="workspace">
+    <div class="canvas" :style="canvasStyle">
       <div v-if="!workflowCreated" class="empty-hint">
         <strong>从左侧工具栏新增节点，或右键画布创建工作流</strong>
         <span>推荐流程：提示词 / 参考图 -> 图片处理节点 -> 结果节点。</span>
@@ -1240,6 +1259,7 @@ function readImageFile(file: File): Promise<ReferenceImage> {
           <input v-model="selectedProvider.authPrefix" placeholder="Bearer " @change="saveState" />
         </label>
       </aside>
+    </div>
     </div>
   </main>
 </template>

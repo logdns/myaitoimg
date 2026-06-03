@@ -5,6 +5,7 @@
 ## 功能
 
 - 节点画布式界面：提示词、图片处理、结果预览。
+- 可滚动画布和可拖拽节点：小窗口下可通过滚动查看完整节点，图片处理节点内容过长时在节点内滚动。
 - OpenAI 图片接口：默认模型 `gpt-image-2`，支持文生图、图片编辑、参考图、蒙版、尺寸、质量、格式、透明背景、压缩参数。
 - Gemini 图片接口：`gemini-3-pro-image-preview`，支持文生图、图生图/局部编辑、多参考图、比例、1K/2K/4K、搜索接地和思考模式。
 - 中转 API：默认按 OpenAI Images 兼容格式请求，支持自定义模型、Endpoint、Edit Endpoint、鉴权 Header 和鉴权前缀。
@@ -41,6 +42,12 @@ npm run tauri:dev
 npm run tauri:build
 ```
 
+发布前建议先检查版本一致性，避免安装器或更新元数据显示旧版本：
+
+```bash
+npm run check:versions
+```
+
 Tauri 不能在单台机器上直接生成所有平台的原生安装包。本项目已提供 `.github/workflows/build.yml`，GitHub Actions 会分别在 macOS、Windows、Linux runner 上构建客户端。
 
 ### GitHub Actions 构建三端客户端
@@ -63,6 +70,8 @@ Tauri 不能在单台机器上直接生成所有平台的原生安装包。本�
 git tag v0.1.0
 git push origin v0.1.0
 ```
+
+CI 会检查 `package.json`、`package-lock.json`、`src-tauri/tauri.conf.json`、`Cargo.toml`、`Cargo.lock`、安装协议文本中的版本号是否一致。Windows release 构建使用 GUI 子系统，不应弹出额外控制台窗口。
 
 ## 接口说明
 

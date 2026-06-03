@@ -1,7 +1,7 @@
 {
   "name": "myaitoimg",
   "private": true,
-  "version": "0.1.5",
+  "version": "0.1.6",
   "author": "小沨, xinai.de",
   "type": "module",
   "scripts": {

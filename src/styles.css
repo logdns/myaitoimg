@@ -55,7 +55,7 @@ button:disabled {
 }
 
 .topbar {
-  position: absolute;
+  position: fixed;
   z-index: 10;
   top: 0;
   left: 0;
@@ -134,7 +134,7 @@ button:disabled {
 }
 
 .toolbar {
-  position: absolute;
+  position: fixed;
   z-index: 9;
   top: 76px;
   display: flex;
@@ -164,11 +164,19 @@ button:disabled {
   color: #bf2d2d;
 }
 
-.canvas {
+.workspace {
   position: absolute;
   inset: 54px 0 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+
+.canvas {
+  position: relative;
+  min-width: 1760px;
+  min-height: 1080px;
   transform: scale(var(--zoom));
-  transform-origin: center top;
+  transform-origin: left top;
   transition: transform 160ms ease;
 }
 
@@ -305,6 +313,8 @@ textarea {
 
 .action-node {
   width: 470px;
+  max-height: calc(100vh - 132px);
+  overflow-y: auto;
   border-color: #63d2ad;
   box-shadow:
     0 0 0 2px rgb(99 210 173 / 0.12),
@@ -614,7 +624,7 @@ textarea:focus {
 }
 
 .settings-panel {
-  position: absolute;
+  position: fixed;
   z-index: 12;
   top: 84px;
   right: 28px;
@@ -650,8 +660,8 @@ textarea:focus {
     min-width: 960px;
   }
 
-  .canvas {
-    transform-origin: left top;
+  .action-node {
+    max-height: calc(100vh - 116px);
   }
 
 }

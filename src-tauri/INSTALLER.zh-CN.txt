@@ -1,4 +1,4 @@
-myaitoimg v0.1.5
+myaitoimg v0.1.6
 
 作者：小沨，xinai.de
 官网：https://xinai.de
