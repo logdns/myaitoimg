@@ -193,7 +193,8 @@ const providerCapability = computed(() => {
 });
 const canRun = computed(() => {
   const provider = selectedProvider.value;
-  return Boolean(workflowCreated.value && provider.endpoint.trim() && provider.model.trim() && prompt.value.trim());
+  const hasRequiredImages = mode.value === "generate" || referenceImages.value.length > 0 || Boolean(activeImage.value);
+  return Boolean(workflowCreated.value && provider.endpoint.trim() && provider.model.trim() && prompt.value.trim() && hasRequiredImages);
 });
 const isTauriRuntime = computed(() => Boolean((window as TauriWindow).__TAURI_INTERNALS__));
 const elapsedText = computed(() => {
@@ -435,10 +436,6 @@ function stopDrag() {
 }
 
 async function generateImagesInBrowser(payload: GeneratePayload): Promise<GeneratedImage[]> {
-  if (payload.mode !== "generate") {
-    throw new Error("当前是浏览器预览模式。图生图、局部、变体请在 Tauri 桌面客户端中运行。");
-  }
-
   if (payload.provider.kind === "gemini") {
     return generateGeminiInBrowser(payload);
   }
@@ -447,6 +444,10 @@ async function generateImagesInBrowser(payload: GeneratePayload): Promise<Genera
 }
 
 async function generateOpenAiCompatibleInBrowser(payload: GeneratePayload): Promise<GeneratedImage[]> {
+  if (payload.mode !== "generate" || payload.referenceImages.length || payload.maskImage) {
+    return generateOpenAiCompatibleEditInBrowser(payload);
+  }
+
   const response = await fetch(payload.provider.endpoint.trim(), {
     method: "POST",
     headers: {
@@ -472,12 +473,56 @@ async function generateOpenAiCompatibleInBrowser(payload: GeneratePayload): Prom
     throw new Error(`接口返回 ${response.status}：${compactApiError(body)}`);
   }
 
-  const json = JSON.parse(body);
+  return parseOpenAiCompatibleImages(JSON.parse(body), payload);
+}
+
+async function generateOpenAiCompatibleEditInBrowser(payload: GeneratePayload): Promise<GeneratedImage[]> {
+  const endpoint = payload.provider.editEndpoint.trim() || payload.provider.endpoint.trim();
+  const form = new FormData();
+  form.append("model", payload.provider.model.trim());
+  form.append("prompt", buildPromptText(payload));
+  form.append("size", payload.size);
+  form.append("quality", payload.quality);
+  form.append("n", String(payload.count));
+  form.append("response_format", "b64_json");
+  form.append("output_format", payload.format);
+  form.append("background", payload.background);
+  if (payload.format === "jpeg" || payload.format === "webp") {
+    form.append("output_compression", String(payload.compression));
+  }
+
+  for (const image of payload.referenceImages) {
+    form.append("image", referenceToFile(image));
+  }
+
+  if (payload.maskImage) {
+    form.append("mask", referenceToFile(payload.maskImage));
+  }
+
+  const response = await fetch(endpoint, {
+    method: "POST",
+    headers: {
+      [payload.provider.authHeader.trim() || "Authorization"]: buildAuthValue(payload.provider),
+    },
+    body: form,
+  });
+
+  const body = await response.text();
+  if (!response.ok) {
+    throw new Error(`接口返回 ${response.status}：${compactApiError(body)}`);
+  }
+
+  return parseOpenAiCompatibleImages(JSON.parse(body), payload);
+}
+
+function parseOpenAiCompatibleImages(json: Record<string, unknown>, payload: GeneratePayload): GeneratedImage[] {
   const data = Array.isArray(json.data) ? json.data : [];
   const result = data
-    .map((item: Record<string, string>) => {
-      const mimeType = item.mime_type ?? `image/${payload.format === "jpg" ? "jpeg" : payload.format}`;
-      const dataUrl = item.b64_json ? `data:${mimeType};base64,${item.b64_json}` : item.url;
+    .map((item) => {
+      if (!item || typeof item !== "object") return undefined;
+      const value = item as Record<string, string | undefined>;
+      const mimeType = value.mime_type ?? `image/${payload.format === "jpeg" ? "jpeg" : payload.format}`;
+      const dataUrl = value.b64_json ? `data:${mimeType};base64,${value.b64_json}` : value.url;
       return dataUrl
         ? {
             dataUrl,
@@ -493,6 +538,15 @@ async function generateOpenAiCompatibleInBrowser(payload: GeneratePayload): Prom
   return result;
 }
 
+function referenceToFile(image: ReferenceImage): File {
+  const bytes = atob(image.data);
+  const buffer = new Uint8Array(bytes.length);
+  for (let index = 0; index < bytes.length; index += 1) {
+    buffer[index] = bytes.charCodeAt(index);
+  }
+  return new File([buffer], image.name || `reference.${extensionFromMime(image.mimeType)}`, { type: image.mimeType });
+}
+
 async function generateGeminiInBrowser(payload: GeneratePayload): Promise<GeneratedImage[]> {
   const endpoint = payload.provider.endpoint.replace("{model}", payload.provider.model.trim());
   const url = endpoint.includes("?")
@@ -502,7 +556,7 @@ async function generateGeminiInBrowser(payload: GeneratePayload): Promise<Genera
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      contents: [{ role: "user", parts: [{ text: buildPromptText(payload) }] }],
+      contents: [{ role: "user", parts: buildGeminiParts(payload) }],
       generationConfig: {
         responseModalities: ["TEXT", "IMAGE"],
         temperature: payload.temperature,
@@ -543,6 +597,30 @@ async function generateGeminiInBrowser(payload: GeneratePayload): Promise<Genera
   return result;
 }
 
+function buildGeminiParts(payload: GeneratePayload) {
+  const parts: Array<Record<string, unknown>> = [{ text: buildPromptText(payload) }];
+  for (const image of payload.referenceImages) {
+    parts.push({
+      inlineData: {
+        mimeType: image.mimeType,
+        data: image.data,
+      },
+    });
+  }
+
+  if (payload.maskImage) {
+    parts.push({
+      inlineData: {
+        mimeType: payload.maskImage.mimeType,
+        data: payload.maskImage.data,
+      },
+    });
+    parts.push({ text: "上一张图片是局部修改蒙版，请只修改蒙版区域。" });
+  }
+
+  return parts;
+}
+
 function buildAuthValue(provider: ProviderConfig): string {
   const prefix = provider.authPrefix.trim();
   if (!prefix) return provider.apiKey.trim();
@@ -555,6 +633,7 @@ function buildPromptText(payload: GeneratePayload): string {
     `提示词：${payload.prompt.trim()}`,
     payload.project.trim() ? `项目：${payload.project.trim()}` : "",
     payload.tags.trim() ? `标签：${payload.tags.trim()}` : "",
+    payload.referenceImages.length ? `参考图：${payload.referenceImages.map((image) => image.name).join(", ")}` : "",
   ]
     .filter(Boolean)
     .join("\n");
@@ -808,6 +887,11 @@ async function handleReferenceUpload(event: Event) {
   const files = Array.from(input.files).slice(0, 14 - referenceImages.value.length);
   const loaded = await Promise.all(files.map(readImageFile));
   referenceImages.value.push(...loaded);
+  workflowCreated.value = true;
+  if (mode.value === "generate") {
+    mode.value = "edit";
+  }
+  status.value = `已上传 ${loaded.length} 张参考图，可直接运行图生图或编辑。`;
   saveState();
   input.value = "";
 }
@@ -817,6 +901,9 @@ async function handleMaskUpload(event: Event) {
   const file = input.files?.[0];
   if (!file) return;
   maskImage.value = await readImageFile(file);
+  workflowCreated.value = true;
+  mode.value = "variation";
+  status.value = "已上传局部蒙版，请确认参考图和提示词后运行。";
   saveState();
   input.value = "";
 }
@@ -824,6 +911,16 @@ async function handleMaskUpload(event: Event) {
 function removeReference(index: number) {
   referenceImages.value.splice(index, 1);
   saveState();
+}
+
+function clearReferences() {
+  referenceImages.value = [];
+  status.value = "已清空参考图。";
+  saveState();
+}
+
+function referenceDataUrl(image: ReferenceImage): string {
+  return `data:${image.mimeType};base64,${image.data}`;
 }
 
 function readImageFile(file: File): Promise<ReferenceImage> {
@@ -1035,20 +1132,22 @@ function readImageFile(file: File): Promise<ReferenceImage> {
         </div>
         <div class="upload-row">
           <label class="file-button">
-            参考图 {{ referenceImages.length }}/14
+            上传参考图 {{ referenceImages.length }}/14
             <input type="file" accept="image/png,image/jpeg,image/webp" multiple @change="handleReferenceUpload" />
           </label>
           <label class="file-button">
             局部蒙版
             <input type="file" accept="image/png" @change="handleMaskUpload" />
           </label>
-          <button v-if="maskImage" type="button" @click="maskImage = undefined; saveState()">清除蒙版</button>
+          <button type="button" :disabled="!referenceImages.length && !maskImage" @click="clearReferences(); maskImage = undefined; saveState()">清空上传</button>
         </div>
         <div v-if="referenceImages.length" class="reference-list">
-          <button v-for="(image, index) in referenceImages" :key="`${image.name}-${index}`" type="button" @click="removeReference(index)">
-            {{ image.name }}
+          <button v-for="(image, index) in referenceImages" :key="`${image.name}-${index}`" type="button" :title="`移除 ${image.name}`" @click="removeReference(index)">
+            <img :src="referenceDataUrl(image)" alt="" />
+            <span>{{ image.name }}</span>
           </button>
         </div>
+        <div v-if="maskImage" class="mask-note">蒙版：{{ maskImage.name }}</div>
         <button class="run-button" type="button" :disabled="!canRun || isRunning" @click="runProcess">
           {{ isRunning ? "运行中..." : "运行处理" }}
         </button>

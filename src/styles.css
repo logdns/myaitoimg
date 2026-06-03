@@ -471,23 +471,49 @@ textarea:focus {
 }
 
 .reference-list {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
   gap: 8px;
-  max-height: 78px;
+  max-height: 142px;
   overflow: auto;
   padding: 0 16px 12px;
 }
 
 .reference-list button {
-  max-width: 130px;
-  height: 30px;
+  min-width: 0;
+  height: 64px;
+  display: grid;
+  grid-template-columns: 42px 1fr;
+  align-items: center;
+  gap: 8px;
   overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  padding: 0 10px;
+  padding: 6px;
   color: #365267;
   font-size: 12px;
+  text-align: left;
+}
+
+.reference-list img {
+  width: 42px;
+  height: 42px;
+  border-radius: 6px;
+  object-fit: cover;
+  background: #edf3f6;
+}
+
+.reference-list span {
+  min-width: 0;
+  overflow: hidden;
+  margin: 0;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mask-note {
+  margin: -4px 16px 12px;
+  color: #526779;
+  font-size: 12px;
+  font-weight: 800;
 }
 
 .status {
