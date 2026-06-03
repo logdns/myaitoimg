@@ -1,11 +1,12 @@
 {
   "name": "myaitoimg",
   "private": true,
-  "version": "0.1.4",
+  "version": "0.1.5",
   "author": "小沨, xinai.de",
   "type": "module",
   "scripts": {
     "dev": "vite --host 127.0.0.1 --port 1420",
+    "check:versions": "node scripts/check_versions.mjs",
     "build": "vue-tsc --noEmit && vite build",
     "preview": "vite preview --host 127.0.0.1 --port 4173",
     "tauri": "tauri",
