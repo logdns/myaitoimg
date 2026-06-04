@@ -4,11 +4,13 @@ use reqwest::header::{HeaderMap, HeaderName, HeaderValue, CONTENT_TYPE};
 use reqwest::multipart::{Form, Part};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
+use std::error::Error as StdError;
 use std::fs;
 #[cfg(all(unix, not(target_os = "macos")))]
 use std::path::Path;
 use std::process::Command;
-use std::time::{SystemTime, UNIX_EPOCH};
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
+use tauri::WindowEvent;
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -122,7 +124,7 @@ fn share_image(payload: ImageCommandPayload) -> Result<String, String> {
 async fn generate_with_openai_compatible(
     payload: GeneratePayload,
 ) -> Result<Vec<GeneratedImage>, String> {
-    let client = reqwest::Client::new();
+    let client = http_client()?;
     let mut headers = HeaderMap::new();
     insert_auth_header(&mut headers, &payload.provider)?;
 
@@ -161,7 +163,7 @@ async fn generate_openai_json(
         .json(&body)
         .send()
         .await
-        .map_err(|error| format!("请求失败：{error}"))?;
+        .map_err(|error| format!("请求失败：{}", request_error(error)))?;
 
     let status = response.status();
     let text = response
@@ -217,7 +219,7 @@ async fn generate_openai_multipart(
         .multipart(form)
         .send()
         .await
-        .map_err(|error| format!("请求失败：{error}"))?;
+        .map_err(|error| format!("请求失败：{}", request_error(error)))?;
 
     let status = response.status();
     let text = response
@@ -235,7 +237,7 @@ async fn generate_openai_multipart(
 }
 
 async fn generate_with_gemini(payload: GeneratePayload) -> Result<Vec<GeneratedImage>, String> {
-    let client = reqwest::Client::new();
+    let client = http_client()?;
     let endpoint = payload
         .provider
         .endpoint
@@ -277,7 +279,7 @@ async fn generate_with_gemini(payload: GeneratePayload) -> Result<Vec<GeneratedI
         .json(&body)
         .send()
         .await
-        .map_err(|error| format!("请求失败：{error}"))?;
+        .map_err(|error| format!("请求失败：{}", request_error(error)))?;
 
     let status = response.status();
     let text = response
@@ -575,8 +577,8 @@ fn open_path(path: &str) -> Result<(), String> {
         .map_err(|error| format!("打开图片失败：{error}"))?;
 
     #[cfg(target_os = "windows")]
-    Command::new("cmd")
-        .args(["/C", "start", "", path])
+    Command::new("explorer")
+        .arg(path)
         .spawn()
         .map_err(|error| format!("打开图片失败：{error}"))?;
 
@@ -642,10 +644,40 @@ fn compact_error(text: &str) -> String {
     text.chars().take(500).collect()
 }
 
+fn http_client() -> Result<reqwest::Client, String> {
+    reqwest::Client::builder()
+        .connect_timeout(Duration::from_secs(30))
+        .user_agent("myaitoimg/0.1.7")
+        .build()
+        .map_err(|error| format!("创建 HTTP 客户端失败：{}", request_error(error)))
+}
+
+fn request_error(error: reqwest::Error) -> String {
+    let error = error.without_url();
+    let mut message = error.to_string();
+    let mut source = error.source();
+
+    while let Some(cause) = source {
+        message.push_str("；原因：");
+        message.push_str(&cause.to_string());
+        source = cause.source();
+    }
+
+    message
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_updater::Builder::new().build())
+        .on_window_event(|window, event| {
+            if let WindowEvent::CloseRequested { api, .. } = event {
+                api.prevent_close();
+                if let Err(error) = window.minimize() {
+                    eprintln!("最小化窗口失败：{error}");
+                }
+            }
+        })
         .invoke_handler(tauri::generate_handler![
             generate_images,
             open_image,
