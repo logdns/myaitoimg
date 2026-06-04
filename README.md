@@ -4,6 +4,10 @@
 
 本仓库是公开项目。代码中不包含任何可用的 OpenAI、Gemini、中转 API Key 或 Tauri 发布签名私钥；桌面端自动更新依赖公开 GitHub Release 中的 `latest.json` 和安装包资产。
 
+## 界面预览
+
+![myaitoimg 节点式图片生成工作台界面预览](docs/app-preview.png)
+
 ## 功能
 
 - 节点画布式界面：提示词、图片处理、结果预览。
